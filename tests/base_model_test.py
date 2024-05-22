@@ -1,55 +1,37 @@
 import unittest
-import uuid
-from datetime import datetime
+from unittest.mock import mock_open, patch
+import json
+from models.engine.file_storage import FileStorage
 from models.base_model import BaseModel
 
-
-class TestBaseModel(unittest.TestCase):
-    """Unit tests for the BaseModel class."""
-
+class TestFileStorage(unittest.TestCase):
     def setUp(self):
-        """Set up test environment."""
-        self.model = BaseModel()
+        self.file_content = json.dumps({
+            "BaseModel.123": {
+                "id": "123",
+                "created_at": "2024-01-01T12:00:00.000000",
+                "updated_at": "2024-01-01T12:00:00.000000"
+            }
+        })
 
-    def test_id_is_uuid(self):
-        """Test that id is a valid UUID."""
-        self.assertIsInstance(self.model.id, str)
-        try:
-            uuid_obj = uuid.UUID(self.model.id, version=4)
-        except ValueError:
-            self.fail("id is not a valid UUID4")
+    def test_save(self):
+        with patch('builtins.open', mock_open()) as mock_file:
+            fs = FileStorage()
+            obj = BaseModel(id="123", created_at="2024-01-01T12:00:00.000000", updated_at="2024-01-01T12:00:00.000000")
+            fs.new(obj)
+            fs.save()
+            mock_file.assert_called_once_with('file.json', 'w')
+            mock_file().write.assert_called_once_with(self.file_content)
 
-    def test_created_at_is_datetime(self):
-        """Test that created_at is a datetime object."""
-        self.assertIsInstance(self.model.created_at, datetime)
+    def test_reload(self):
+        with patch('builtins.open', mock_open(read_data=self.file_content)):
+            fs = FileStorage()
+            fs.reload()
+            obj = fs.all()["BaseModel.123"]
+            self.assertEqual(obj.id, "123")
+            self.assertEqual(obj.created_at.isoformat(), "2024-01-01T12:00:00.000000")
+            self.assertEqual(obj.updated_at.isoformat(), "2024-01-01T12:00:00.000000")
 
-    def test_updated_at_is_datetime(self):
-        """Test that updated_at is a datetime object."""
-        self.assertIsInstance(self.model.updated_at, datetime)
-
-    def test_str_method(self):
-        """Test the __str__ method."""
-        expected_str = f"[BaseModel] ({self.model.id}) {self.model.__dict__}"
-        self.assertEqual(str(self.model), expected_str)
-
-    def test_save_method(self):
-        """Test the save method updates updated_at."""
-        old_updated_at = self.model.updated_at
-        self.model.save()
-        self.assertNotEqual(self.model.updated_at, old_updated_at)
-        self.assertGreater(self.model.updated_at, old_updated_at)
-
-    def test_to_dict_method(self):
-        """Test the to_dict method."""
-        model_dict = self.model.to_dict()
-        self.assertEqual(model_dict['__class__'], 'BaseModel')
-        self.assertEqual(model_dict['id'], self.model.id)
-        self.assertEqual(model_dict['created_at'], self.model.created_at.isoformat())
-        self.assertEqual(model_dict['updated_at'], self.model.updated_at.isoformat())
-        self.assertIsInstance(model_dict['created_at'], str)
-        self.assertIsInstance(model_dict['updated_at'], str)
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
 
