@@ -5,6 +5,7 @@ from models import storage
 
 class BaseModel:
     """Base model class that defines all common attributes/methods for other classes."""
+    globals = {}
 
     def __init__(self, *args, **kwargs):
         """Initialize a new BaseModel instance.
@@ -13,6 +14,9 @@ class BaseModel:
             *args: Variable length argument list.
             **kwargs: Arbitrary keyword arguments for initializing attributes.
         """
+        cls_name = self.__class__.__name__
+        BaseModel.globals[cls_name] = self
+
         if kwargs:
             for key, value in kwargs.items():
                 if key in ['created_at', 'updated_at']:
